@@ -66,6 +66,37 @@ clawscaffold render --id sales/coach
 | `enforce` | Enforce managed registry consistency |
 | `install-skills` | Install SKILL.md files to Claude Code or OpenClaw |
 
+## Using with ClawSpec
+
+[ClawSpec](https://github.com/austinmao/clawspec) is the contract-first QA framework for OpenClaw. When used together, ClawScaffold auto-generates ClawSpec test scenarios during adoption and creation workflows.
+
+Install both:
+
+```bash
+pip install clawscaffold[spec]   # includes clawspec as optional dependency
+```
+
+When ClawSpec is installed, `clawscaffold adopt` and `clawscaffold create` automatically generate:
+- `tests/scenarios.yaml` — smoke, negative, and identity test contracts
+- `tests/handoffs/*.yaml` — handoff contracts for multi-agent delegation
+- Coverage ledger entries for the adopted target
+
+Without ClawSpec installed, these steps are skipped gracefully — the scaffolder works standalone for spec management and auditing.
+
+```bash
+# Adopt an agent — ClawSpec scenarios auto-generated
+clawscaffold adopt --name sales/coach --source agents/sales/coach/SOUL.md --kind agent
+
+# Verify the generated tests
+clawspec validate agents/sales/coach
+clawspec run agents/sales/coach --dry-run
+```
+
+## Related Projects
+
+- **[ClawSpec](https://github.com/austinmao/clawspec)** — Contract-first QA for OpenClaw skills and agents (29 assertion types, Opik observability, regression baselines)
+- **[OpenClaw](https://github.com/austinmao/openclaw)** — Local-first AI agent framework (LLM + chat channels + Markdown skills)
+
 ## Development
 
 ```bash
