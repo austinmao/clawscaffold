@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "clawscaffold"
+version = "0.1.0"
+description = "Spec-first target lifecycle manager for OpenClaw agents, skills, and pipelines"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    {name = "Austin Mao"},
+]
+dependencies = [
+    "PyYAML>=6.0",
+    "jsonschema>=4.21",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+spec = ["clawspec>=0.1.0"]
+dev = ["pytest>=8.0", "ruff>=0.11"]
+
+[project.scripts]
+clawscaffold = "clawscaffold.cli:main"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
