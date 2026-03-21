@@ -95,6 +95,7 @@ clawspec run agents/sales/coach --dry-run
 ## Related Projects
 
 - **[ClawSpec](https://github.com/austinmao/clawspec)** — Contract-first QA for OpenClaw skills and agents (29 assertion types, Opik observability, regression baselines)
+- **[ClawWrap](https://github.com/austinmao/clawwrap)** — Spec-first outbound message routing gate (policy enforcement, audit trail)
 - **[OpenClaw](https://github.com/austinmao/openclaw)** — Local-first AI agent framework (LLM + chat channels + Markdown skills)
 
 ## Development
