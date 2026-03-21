@@ -20,11 +20,12 @@ def repo_root(start: Path | None = None) -> Path:
 
     Resolution order:
     1. CLAWSCAFFOLD_ROOT env var (explicit override for CI)
+       or legacy SCAFFOLD_REPO_ROOT compatibility override
     2. Walk up from start (or CWD) looking for .clawscaffold marker
     3. Walk up looking for pyproject.toml + catalog/ (OpenClaw repo pattern)
     4. Raise RuntimeError with clear remediation instructions
     """
-    env_root = os.environ.get("CLAWSCAFFOLD_ROOT")
+    env_root = os.environ.get("CLAWSCAFFOLD_ROOT") or os.environ.get("SCAFFOLD_REPO_ROOT")
     if env_root:
         p = Path(env_root).resolve()
         if p.exists():
