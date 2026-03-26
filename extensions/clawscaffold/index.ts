@@ -57,6 +57,18 @@ async function withTempContentFile(content, fn) {
   }
 }
 
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => {
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
+      catch { resolve({}); }
+    });
+    req.on("error", reject);
+  });
+}
+
 export function register(api) {
   const { repoRoot, pythonBin, timeoutMs } = resolveConfig(api);
 
@@ -139,7 +151,90 @@ export function register(api) {
     },
   }, { optional: true });
 
-  console.log("[clawscaffold] 4 tools registered");
+  // --- HTTP webhook routes ---
+
+  api.registerHttpRoute({
+    path: "/clawscaffold/analyze",
+    auth: "gateway",
+    match: "exact",
+    handler: async (req, res) => {
+      const body = await readBody(req);
+      const args = ["analyze"];
+      if (body.mode) args.push("--mode", String(body.mode));
+      if (body.kind) args.push("--kind", String(body.kind));
+      if (body.id) args.push("--id", String(body.id));
+      if (body.execution_style) args.push("--execution-style", String(body.execution_style));
+      try {
+        const result = await runPlannerCli(pythonBin, repoRoot, args, timeoutMs);
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ status: "error", error: err.message }));
+      }
+    },
+  });
+
+  api.registerHttpRoute({
+    path: "/clawscaffold/next-question",
+    auth: "gateway",
+    match: "exact",
+    handler: async (req, res) => {
+      const body = await readBody(req);
+      const args = ["next-question"];
+      if (body.run_id) args.push("--run-id", String(body.run_id));
+      try {
+        const result = await runPlannerCli(pythonBin, repoRoot, args, timeoutMs);
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ status: "error", error: err.message }));
+      }
+    },
+  });
+
+  api.registerHttpRoute({
+    path: "/clawscaffold/answer",
+    auth: "gateway",
+    match: "exact",
+    handler: async (req, res) => {
+      const body = await readBody(req);
+      const args = ["answer"];
+      if (body.run_id) args.push("--run-id", String(body.run_id));
+      if (body.answer) args.push("--answer", String(body.answer));
+      try {
+        const result = await runPlannerCli(pythonBin, repoRoot, args, timeoutMs);
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ status: "error", error: err.message }));
+      }
+    },
+  });
+
+  api.registerHttpRoute({
+    path: "/clawscaffold/finalize",
+    auth: "gateway",
+    match: "exact",
+    handler: async (req, res) => {
+      const body = await readBody(req);
+      const args = ["finalize"];
+      if (body.run_id) args.push("--run-id", String(body.run_id));
+      if (body.accept_recommendations === true) args.push("--accept-recommendations");
+      try {
+        const result = await runPlannerCli(pythonBin, repoRoot, args, timeoutMs);
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ status: "error", error: err.message }));
+      }
+    },
+  });
+
+  console.log("[clawscaffold] 4 tools + 4 HTTP routes registered");
 }
 
 export function activate(api) { register(api); }
