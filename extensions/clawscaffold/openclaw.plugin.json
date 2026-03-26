@@ -1,5 +1,5 @@
 {
-  "id": "scaffold-planner",
+  "id": "clawscaffold",
   "name": "Scaffold Planner",
   "description": "Native OpenClaw agent tools for the deterministic scaffold interview planner.",
   "version": "1.0.0",

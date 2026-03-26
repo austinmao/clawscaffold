@@ -139,7 +139,7 @@ export function register(api) {
     },
   }, { optional: true });
 
-  console.log("[scaffold-planner] 4 tools registered");
+  console.log("[clawscaffold] 4 tools registered");
 }
 
 export function activate(api) { register(api); }
