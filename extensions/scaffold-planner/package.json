@@ -1,0 +1,10 @@
+{
+  "name": "@ceremonia/scaffold-planner",
+  "private": true,
+  "type": "module",
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

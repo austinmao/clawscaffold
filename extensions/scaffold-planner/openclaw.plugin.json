@@ -1,0 +1,24 @@
+{
+  "id": "scaffold-planner",
+  "name": "Scaffold Planner",
+  "description": "Native OpenClaw agent tools for the deterministic scaffold interview planner.",
+  "version": "1.0.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "repoRoot": {
+        "type": "string",
+        "minLength": 1
+      },
+      "pythonBin": {
+        "type": "string",
+        "minLength": 1
+      },
+      "timeoutMs": {
+        "type": "integer",
+        "minimum": 1000
+      }
+    }
+  }
+}

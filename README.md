@@ -107,17 +107,65 @@ pip install -e ".[dev]"
 pytest
 ```
 
-## OpenClaw Suite
+## OpenClaw Gateway Plugin
 
-Part of the OpenClaw open-source toolchain:
+ClawScaffold ships with a gateway plugin (scaffold-planner) that registers scaffold interview tools directly in the OpenClaw gateway. The plugin provides four tools: `scaffold_analyze`, `scaffold_next_question`, `scaffold_answer`, and `scaffold_finalize`.
+
+### Installation
+
+1. Copy the `extensions/scaffold-planner/` directory into your OpenClaw workspace:
+
+```bash
+cp -r extensions/scaffold-planner/ ~/.openclaw/extensions/scaffold-planner/
+```
+
+2. Register the plugin in your `~/.openclaw/openclaw.json`:
+
+```json
+{
+  "extensions": {
+    "scaffold-planner": {
+      "repoRoot": "/path/to/your/workspace",
+      "timeoutMs": 30000
+    }
+  }
+}
+```
+
+3. Restart the gateway:
+
+```bash
+openclaw gateway restart
+```
+
+### Plugin Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `repoRoot` | string | `$OPENCLAW_WORKSPACE` or `cwd` | Workspace root containing the clawscaffold package |
+| `pythonBin` | string | `python3` | Path to Python binary |
+| `timeoutMs` | integer | `30000` | CLI execution timeout in milliseconds |
+
+### Registered Tools
+
+`scaffold_analyze`, `scaffold_next_question`, `scaffold_answer`, `scaffold_finalize`
+
+See the [openclaw.plugin.json](extensions/scaffold-planner/openclaw.plugin.json) for the full config schema.
+
+## ClawSuite
+
+This package is part of **ClawSuite** — the OpenClaw agent infrastructure toolkit.
 
 | Package | Description | Repo |
-|---------|-------------|------|
-| **ClawPipe** | Config-driven pipeline orchestration engine | [austinmao/clawpipe](https://github.com/austinmao/clawpipe) |
-| **ClawSpec** | Contract-first QA for skills and agents | [austinmao/clawspec](https://github.com/austinmao/clawspec) |
-| **ClawWrap** | Outbound message routing and policy enforcement | [austinmao/clawwrap](https://github.com/austinmao/clawwrap) |
-| **ClawAgentSkill** | Agent and skill discovery, security scanning | [austinmao/clawagentskill](https://github.com/austinmao/clawagentskill) |
-| **ClawScaffold** | Agent and skill scaffolding and lifecycle management | [austinmao/clawscaffold](https://github.com/austinmao/clawscaffold) |
+|---|---|---|
+| **ClawPipe** | Config-driven pipeline orchestration | [austinmao/clawpipe](https://github.com/austinmao/clawpipe) |
+| **ClawSpec** | Contract-first testing for skills & agents | [austinmao/clawspec](https://github.com/austinmao/clawspec) |
+| **ClawWrap** | Outbound policy & conformance engine | [austinmao/clawwrap](https://github.com/austinmao/clawwrap) |
+| **ClawAgentSkill** | Skill discovery, scanning & adoption | [austinmao/clawagentskill](https://github.com/austinmao/clawagentskill) |
+| **ClawScaffold** | Agent/skill scaffold interviews | [austinmao/clawscaffold](https://github.com/austinmao/clawscaffold) |
+| **ClawInterview** | Pipeline interview compilation & execution | *(coming soon)* |
+
+All packages include OpenClaw gateway plugins for autonomous agent access.
 
 ## License
 
