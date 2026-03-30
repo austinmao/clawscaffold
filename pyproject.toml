@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "clawscaffold"
-version = "0.1.0"
+version = "0.2.0"
 description = "Spec-first target lifecycle manager for OpenClaw agents, skills, and pipelines"
 readme = "README.md"
 license = "MIT"
@@ -20,6 +20,7 @@ dependencies = [
 
 [project.optional-dependencies]
 spec = ["clawspec>=0.1.0"]
+paperclip = []  # no Python deps — adapter shells out to Paperclip CLI
 dev = ["pytest>=8.0", "ruff>=0.11"]
 
 [project.scripts]
@@ -33,5 +34,5 @@ line-length = 100
 select = ["E", "F", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "clawscaffold/adapters/tests"]
 pythonpath = ["."]

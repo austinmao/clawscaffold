@@ -1721,7 +1721,190 @@ def build_parser() -> ArgumentParser:
     skill_add_parser.add_argument("source_name", help="Source and skill name in <source>:<skill-name> format")
     skill_add_parser.set_defaults(func=handle_skill)
 
+    # --- sync-paperclip: optional Paperclip adapter ---
+    sync_pclip_parser = subparsers.add_parser(
+        "sync-paperclip",
+        help="Sync agents from catalog to Paperclip via CLI (optional adapter)",
+    )
+    sync_pclip_parser.add_argument("--dry-run", action="store_true", help="Generate .paperclip.yaml and print without importing")
+    sync_pclip_parser.add_argument("--filter", help="Glob pattern to filter agents (e.g. 'executive/*')")
+    sync_pclip_parser.add_argument("--generate-keys", action="store_true", help="Generate API keys after import")
+    sync_pclip_parser.add_argument("--force-keys", action="store_true", help="Regenerate keys even if key files exist")
+    sync_pclip_parser.add_argument("--api-base", help="Paperclip API URL (default: PAPERCLIP_API_URL env)")
+    sync_pclip_parser.add_argument("--company-id", help="Paperclip company ID (default: PAPERCLIP_COMPANY_ID env)")
+    sync_pclip_parser.set_defaults(func=handle_sync_paperclip)
+
+    # --- sync-skills: populate agent workspace skill directories ---
+    sync_skills_parser = subparsers.add_parser(
+        "sync-skills",
+        help="Sync skills from repo to agent workspace directories based on catalog declarations",
+    )
+    sync_skills_parser.add_argument("--dry-run", action="store_true", help="Preview without copying")
+    sync_skills_parser.add_argument("--clean", action="store_true", help="Remove undeclared skills from workspaces")
+    sync_skills_parser.add_argument("--agent", help="Sync only this agent (e.g., executive/ceo)")
+    sync_skills_parser.set_defaults(func=handle_sync_skills)
+
+    # --- sync-agents: register agents with gateway + set CEO default ---
+    sync_agents_parser = subparsers.add_parser(
+        "sync-agents",
+        help="Register catalog agents with OpenClaw gateway and set CEO as default",
+    )
+    sync_agents_parser.add_argument("--dry-run", action="store_true", help="Preview without registering")
+    sync_agents_parser.add_argument("--filter", help="Glob pattern to filter agents (e.g. 'executive/*')")
+    sync_agents_parser.set_defaults(func=handle_sync_agents)
+
+    # --- sync: unified sync (agents + skills + paperclip) ---
+    sync_parser = subparsers.add_parser(
+        "sync",
+        help="Sync all: register agents with gateway, populate workspace skills, and optionally sync to Paperclip",
+    )
+    sync_parser.add_argument("--dry-run", action="store_true", help="Preview without applying")
+    sync_parser.add_argument("--clean", action="store_true", help="Remove undeclared skills from workspaces")
+    sync_parser.add_argument("--skip-paperclip", action="store_true", help="Skip Paperclip sync")
+    sync_parser.add_argument("--skip-agents", action="store_true", help="Skip gateway agent registration")
+    sync_parser.add_argument("--skip-skills", action="store_true", help="Skip workspace skill sync")
+    sync_parser.set_defaults(func=handle_sync)
+
     return parser
+
+
+def handle_sync_skills(args: Namespace) -> int:
+    """Handle sync-skills subcommand."""
+    from clawscaffold.adapters.skill_sync import sync_skills
+
+    result = sync_skills(
+        _repo(),
+        agent_filter=getattr(args, "agent", None),
+        dry_run=getattr(args, "dry_run", False),
+        clean=getattr(args, "clean", False),
+    )
+
+    if result.errors:
+        for e in result.errors:
+            print(f"[sync-skills] error: {e}", file=sys.stderr)
+        return 1
+
+    for detail in result.agent_details:
+        agent_id = detail["agent"]
+        actions = detail.get("actions", [])
+        if not actions:
+            continue
+        print(f"  {agent_id}:")
+        for a in actions:
+            action = a["action"]
+            skill = a["skill"]
+            icon = {"copied": "COPY", "updated": "UPDATE", "removed": "REMOVE", "not_found": "WARN"}.get(action, action)
+            print(f"    {icon}: {skill}")
+
+    prefix = "(dry-run) " if getattr(args, "dry_run", False) else ""
+    print(
+        f"\n{prefix}[sync-skills] agents={result.agents_synced}"
+        f" copied={result.copied} updated={result.updated}"
+        f" unchanged={result.unchanged} missing={result.missing}"
+        f" removed={result.removed}"
+    )
+    return 0
+
+
+def handle_sync_agents(args: Namespace) -> int:
+    """Handle sync-agents subcommand."""
+    from clawscaffold.adapters.catalog_reader import read_catalog_agents
+    from clawscaffold.adapters.gateway_register import register_agents_with_gateway
+
+    dry_run = getattr(args, "dry_run", False)
+    filter_pattern = getattr(args, "filter", None)
+
+    agents = read_catalog_agents(_repo(), filter_pattern=filter_pattern)
+    if not agents:
+        print("[sync-agents] no catalog agents found")
+        return 0
+
+    if dry_run:
+        print(f"[sync-agents] (dry-run) would register {len(agents)} agents")
+        for a in agents:
+            print(f"  {a.id}")
+        return 0
+
+    reg = register_agents_with_gateway(agents, _repo())
+    print(f"[sync-agents] registered={reg.registered} skipped={reg.skipped} errors={len(reg.errors)}")
+
+    # Set CEO as default (patch openclaw.json)
+    _set_ceo_default()
+
+    return 1 if reg.errors else 0
+
+
+def _set_ceo_default() -> None:
+    """Set default: true on the CEO agent in openclaw.json."""
+    import json as _json
+
+    config_paths = [
+        Path.home() / ".openclaw" / "openclaw.json",
+    ]
+    for config_path in config_paths:
+        if not config_path.is_file():
+            continue
+        with open(config_path) as f:
+            config = _json.load(f)
+        agents_list = config.get("agents", {}).get("list", [])
+        ceo = next((a for a in agents_list if a.get("id") == "ceo"), None)
+        if ceo and not ceo.get("default"):
+            ceo["default"] = True
+            with open(config_path, "w") as f:
+                _json.dump(config, f, indent=2)
+                f.write("\n")
+            print(f"[sync-agents] set default: true on CEO in {config_path}")
+
+
+def handle_sync(args: Namespace) -> int:
+    """Handle unified sync subcommand."""
+    dry_run = getattr(args, "dry_run", False)
+    exit_code = 0
+
+    if not getattr(args, "skip_agents", False):
+        print("=== Syncing agents to gateway ===")
+        agent_args = Namespace(dry_run=dry_run, filter=None)
+        rc = handle_sync_agents(agent_args)
+        if rc != 0:
+            exit_code = rc
+
+    if not getattr(args, "skip_skills", False):
+        print("\n=== Syncing skills to agent workspaces ===")
+        skill_args = Namespace(dry_run=dry_run, clean=getattr(args, "clean", False), agent=None)
+        rc = handle_sync_skills(skill_args)
+        if rc != 0:
+            exit_code = rc
+
+    if not getattr(args, "skip_paperclip", False):
+        print("\n=== Syncing agents to Paperclip ===")
+        try:
+            pclip_args = Namespace(dry_run=dry_run, filter=None, generate_keys=False, force_keys=False, api_base=None, company_id=None)
+            rc = handle_sync_paperclip(pclip_args)
+            if rc != 0:
+                exit_code = rc
+        except Exception as exc:
+            print(f"[sync] Paperclip sync skipped: {exc}")
+
+    return exit_code
+
+
+def handle_sync_paperclip(args: Namespace) -> int:
+    """Handle sync-paperclip subcommand."""
+    from clawscaffold.adapters.paperclip_adapter import PaperclipAdapter
+
+    adapter = PaperclipAdapter(repo_root=_repo())
+    result = adapter.sync(
+        dry_run=getattr(args, "dry_run", False),
+        filter_pattern=getattr(args, "filter", None),
+        generate_keys_flag=getattr(args, "generate_keys", False),
+        force_keys=getattr(args, "force_keys", False),
+        api_base=getattr(args, "api_base", None),
+        company_id=getattr(args, "company_id", None),
+    )
+
+    if result.import_result and result.import_result.errors:
+        return 1
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

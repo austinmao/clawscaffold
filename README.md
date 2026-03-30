@@ -65,6 +65,37 @@ clawscaffold render --id sales/coach
 | `promote` | Promote a target to managed status |
 | `enforce` | Enforce managed registry consistency |
 | `install-skills` | Install SKILL.md files to Claude Code or OpenClaw |
+| `sync-paperclip` | Sync agents to Paperclip for org chart and task management |
+
+## Paperclip Adapter (Optional)
+
+ClawScaffold includes an optional adapter for [Paperclip](https://github.com/PaperclipAI/paperclip) that bulk-registers agents with hierarchy, generates API keys, and keeps agent instructions in sync.
+
+The adapter activates only when Paperclip is detected (`PAPERCLIP_API_URL` env var or `pnpm paperclipai` CLI available). No Python Paperclip dependencies are added.
+
+```bash
+# Preview what would be imported (no changes made)
+clawscaffold sync-paperclip --dry-run
+
+# Bulk-register all catalog agents to Paperclip
+PAPERCLIP_COMPANY_ID=<uuid> clawscaffold sync-paperclip
+
+# Filter to a department
+clawscaffold sync-paperclip --filter "executive/*"
+
+# Register and generate API keys
+clawscaffold sync-paperclip --generate-keys
+
+# Sync a single agent after create/adopt
+clawscaffold create --kind agent --id sales/coach --sync-paperclip
+```
+
+**What it does:**
+- Generates `.paperclip.yaml` portable format from `catalog/agents/` specs
+- Converts `SOUL.md` files to Paperclip `AGENTS.md` with frontmatter
+- Shells out to `pnpm paperclipai company import` for bulk registration
+- Generates API keys via `pnpm paperclipai agent local-cli`
+- Stores keys at `~/.openclaw/workspace/paperclip-agent-keys/<key>.json`
 
 ## Using with ClawSpec
 
@@ -97,6 +128,7 @@ clawspec run agents/sales/coach --dry-run
 - **[ClawSpec](https://github.com/austinmao/clawspec)** — Contract-first QA for OpenClaw skills and agents (29 assertion types, Opik observability, regression baselines)
 - **[ClawWrap](https://github.com/austinmao/clawwrap)** — Spec-first outbound message routing gate (policy enforcement, audit trail)
 - **[OpenClaw](https://github.com/austinmao/openclaw)** — Local-first AI agent framework (LLM + chat channels + Markdown skills)
+- **[Paperclip](https://github.com/PaperclipAI/paperclip)** — AI agent orchestration platform (org chart, task management, conversations)
 
 ## Development
 
