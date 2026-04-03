@@ -6,7 +6,7 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .hierarchy_reader import MergedAgent
+from typing import Any
 
 
 @dataclass
@@ -19,8 +19,23 @@ class GatewayRegistration:
     errors: list[str] = field(default_factory=list)
 
 
+def _agent_key(agent: Any) -> str:
+    """Derive the gateway short key from an agent object.
+
+    Works with both MergedAgent (has ``.key``) and CatalogAgent
+    (has ``.id`` like ``executive/cmo``). For CatalogAgent, extracts
+    the last path segment as the short key.
+    """
+    key = getattr(agent, "key", None)
+    if key:
+        return key
+    # Fall back to last segment of .id (e.g. "executive/cmo" → "cmo")
+    agent_id = getattr(agent, "id", "")
+    return agent_id.rsplit("/", 1)[-1] if "/" in agent_id else agent_id
+
+
 def register_agents_with_gateway(
-    agents: list[MergedAgent],
+    agents: list[Any],
     repo_root: Path,
 ) -> GatewayRegistration:
     """Register each agent with the OpenClaw gateway.
@@ -32,8 +47,12 @@ def register_agents_with_gateway(
 
     Uses ``openclaw agents add <key> --workspace <path>``.
 
+    Accepts both ``MergedAgent`` (from hierarchy_reader) and
+    ``CatalogAgent`` (from catalog_reader). The short key is
+    resolved via ``_agent_key()``.
+
     Args:
-        agents: List of merged agent specs.
+        agents: List of agent specs (MergedAgent or CatalogAgent).
         repo_root: Repository root directory.
 
     Returns:
@@ -42,6 +61,7 @@ def register_agents_with_gateway(
     result = GatewayRegistration()
 
     for agent in agents:
+        key = _agent_key(agent)
         workspace_path = repo_root / "agents" / agent.id
         if not workspace_path.is_dir():
             result.skipped += 1
@@ -58,7 +78,7 @@ def register_agents_with_gateway(
                     "openclaw",
                     "agents",
                     "add",
-                    agent.key,
+                    key,
                     "--workspace",
                     str(workspace_path),
                 ],
@@ -75,9 +95,9 @@ def register_agents_with_gateway(
                     result.skipped += 1
                 else:
                     result.failed += 1
-                    result.errors.append(f"{agent.key}: exit {proc.returncode} — {stderr[:100]}")
+                    result.errors.append(f"{key}: exit {proc.returncode} — {stderr[:100]}")
         except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:
             result.failed += 1
-            result.errors.append(f"{agent.key}: {exc}")
+            result.errors.append(f"{key}: {exc}")
 
     return result
