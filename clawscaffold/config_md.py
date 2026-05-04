@@ -207,13 +207,11 @@ def _build_observability_section(spec: dict[str, Any]) -> list[str] | None:
 
     log_level = observability.get("log_level", "standard")
     cost_tracking = observability.get("cost_tracking", True)
-    paperclip_sync = observability.get("paperclip_sync", True)
 
     return [
         "## Observability",
         f"- **Log level**: {log_level}",
         f"- **Cost tracking**: {_yes_no(cost_tracking)}",
-        f"- **Paperclip sync**: {_yes_no(paperclip_sync)}",
     ]
 
 

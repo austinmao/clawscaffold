@@ -64,7 +64,6 @@ def build_default_governance_record(
                 "config_ref": {"soul": f"agents/{target_id}/SOUL.md"},
             },
             "budget": {"tier": "standard", "monthly_usd_cap": 50},
-            "paperclip": {"export": True},
         }
 
     return {
@@ -94,7 +93,6 @@ def build_default_governance_record(
         },
         "budget": {"tier": "economy", "monthly_usd_cap": 10},
         "routing": {"directly_invocable": True, "model_visible": True},
-        "paperclip": {"export": False},
     }
 
 
@@ -138,9 +136,6 @@ def validate_governance_record(record: dict[str, Any], root: Path | None = None)
             if not record.get(field):
                 raise ValueError(f"Active entrypoint {record['id']} requires {field}")
 
-    if record.get("deprecated") and record.get("paperclip", {}).get("export"):
-        raise ValueError(f"Deprecated record {record['id']} must not have paperclip.export=true")
-
     return record
 
 
@@ -149,7 +144,7 @@ def governance_export(spec: dict[str, Any], kind: str | None = None) -> dict[str
 
     The canonical spec's ``governance`` block is the source of truth.
     This function projects those fields into the governance record format
-    expected by the existing governance system and Paperclip export.
+    expected by the existing governance system.
     """
     kind = kind or spec.get("kind", "agent")
     target_id = spec.get("id", "")
@@ -195,7 +190,6 @@ def governance_export(spec: dict[str, Any], kind: str | None = None) -> dict[str
             "tier": gov.get("budget_tier", "standard"),
             "monthly_usd_cap": gov.get("monthly_usd_cap", 50 if kind == "agent" else 10),
         },
-        "paperclip": gov.get("paperclip", {"export": kind == "agent"}),
     }
 
     # Adapter config refs

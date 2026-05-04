@@ -18,7 +18,7 @@ metadata:
 
 # ClawScaffold CLI (Non-Interactive)
 
-Use this skill to create, adopt, or extend agents and skills through the spec-first scaffolder, run governance audits, or export to Paperclip — all without interactive prompts.
+Use this skill to create, adopt, or extend agents and skills through the spec-first scaffolder and run governance audits — all without interactive prompts.
 
 ## 1. Create a New Agent
 
@@ -59,14 +59,6 @@ clawscaffold governance-audit
 ```
 
 Validates all managed targets against structural rules (required SOUL.md sections, SKILL.md frontmatter, section marker integrity). Prints errors and warnings. Exits 0 on pass, 1 on failure.
-
-## 6. Export to Paperclip
-
-```bash
-clawscaffold export-paperclip
-```
-
-Exports all canonical agent specs and team structures to the Paperclip project tracker. Reports count of agents and teams exported.
 
 ## Key Concepts
 
@@ -110,8 +102,6 @@ On success, the CLI prints:
 ```
 
 Governance audit prints `governance-audit: PASSED` or `governance-audit: FAILED (N errors)`.
-
-Export prints `export-paperclip: wrote N agents, M teams to <export_dir>`.
 
 ## Error Handling
 

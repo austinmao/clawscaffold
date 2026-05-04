@@ -55,7 +55,7 @@ def _render_agent_catalog_table(root: Path | None = None) -> list[str]:
     from clawscaffold.governance import iter_governance_manifests
 
     base = root or Path.cwd()
-    lines = ["| ID | Name | Team | Status | Visibility | Export |", "|---|---|---|---|---|---|"]
+    lines = ["| ID | Name | Team | Status | Visibility |", "|---|---|---|---|---|"]
 
     for _path, record in iter_governance_manifests("agent", base):
         rid = record.get("id", "")
@@ -63,8 +63,7 @@ def _render_agent_catalog_table(root: Path | None = None) -> list[str]:
         team = record.get("owner_team", "")
         status = record.get("status", "")
         vis = record.get("visibility", "")
-        export = "yes" if record.get("paperclip", {}).get("export") else "no"
-        lines.append(f"| `{rid}` | {name} | {team} | {status} | {vis} | {export} |")
+        lines.append(f"| `{rid}` | {name} | {team} | {status} | {vis} |")
 
     return lines
 

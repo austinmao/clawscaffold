@@ -102,11 +102,6 @@ def run_organization_audit(root: Path | None = None) -> dict[str, Any]:
                     f"Governance {kind} '{gid}' is 'retired' but still has runtime files"
                 )
 
-        # Deprecated + exported
-        for gid, record in sorted(gov_records.items()):
-            if record.get("deprecated") and record.get("paperclip", {}).get("export"):
-                errors.append(f"Deprecated {kind} '{gid}' must not have paperclip.export=true")
-
     return {
         "errors": errors,
         "warnings": warnings,

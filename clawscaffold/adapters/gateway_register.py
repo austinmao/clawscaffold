@@ -43,7 +43,7 @@ def register_agents_with_gateway(
     Each agent gets its own entry in the gateway's agents.list with
     a workspace pointing to ``agents/<domain>/<name>/`` (where its
     SOUL.md lives). This allows the gateway to load per-agent
-    instructions when Paperclip wakes that agent.
+    instructions when the agent is invoked.
 
     Uses ``openclaw agents add <key> --workspace <path>``.
 

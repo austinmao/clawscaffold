@@ -61,19 +61,16 @@ _OBSERVABILITY_TIER_TABLE: dict[str, dict[str, Any]] = {
         "log_level": "minimal",
         "cost_tracking": False,
         "alert_on_failure": False,
-        "paperclip_sync": False,
     },
     "medium": {
         "log_level": "standard",
         "cost_tracking": True,
         "alert_on_failure": False,
-        "paperclip_sync": True,
     },
     "high": {
         "log_level": "verbose",
         "cost_tracking": True,
         "alert_on_failure": True,
-        "paperclip_sync": True,
     },
 }
 
@@ -162,7 +159,7 @@ _BUNDLE_SPECS: dict[str, dict[str, Any]] = {
     },
     "observability_posture": {
         "display_name": "Observability Posture",
-        "description": "Logging level, cost tracking, alerting, and Paperclip sync",
+        "description": "Logging level, cost tracking, and alerting",
         "schema_path": "policy.observability",
         "risk_level": "low",
         "blocking_level": "quality",
