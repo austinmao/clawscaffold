@@ -30,32 +30,6 @@ _LOCK_TIMEOUT_SECONDS = 10.0
 # Lazy-loaded schema cache.
 _schema_cache: dict[str, Any] | None = None
 
-# Paperclip team ID for issue creation (empty string disables sync).
-PAPERCLIP_TEAM_ID = os.environ.get("PAPERCLIP_TEAM_ID", "")
-
-# Lazy singleton for PaperclipSync — avoids HTTP connections on import.
-_sync_instance: "PaperclipSync | None" = None  # type: ignore[name-defined]
-
-
-def _get_sync() -> "Any | None":
-    """Return the module-level PaperclipSync singleton, or None if unavailable.
-
-    Returns None when PAPERCLIP_TEAM_ID is unset or PaperclipSync cannot be
-    imported. The singleton is created at most once per process.
-    """
-    global _sync_instance
-    if _sync_instance is None:
-        try:
-            from clawscaffold.paperclip_sync import PaperclipSync  # noqa: PLC0415
-
-            team_id = os.environ.get("PAPERCLIP_TEAM_ID", "")
-            if not team_id:
-                return None
-            _sync_instance = PaperclipSync()
-        except ImportError:
-            return None
-    return _sync_instance
-
 
 _SCHEMA_PATH = (
     Path(__file__).resolve().parents[2]
@@ -243,8 +217,6 @@ def mark_stage_running(
     if state.get("status") in {"pending", "stalled"}:
         state["status"] = "in_progress"
     append_audit(state, "stage_started", stage=stage_name, actor=actor)
-    _sync_stage(state, stage_name, "running")
-    _sync_pipeline(state, state.get("status", "in_progress"))
 
 
 def mark_stage_completed(
@@ -266,7 +238,6 @@ def mark_stage_completed(
     if artifact is not None:
         stage["artifact"] = artifact
     append_audit(state, "stage_completed", stage=stage_name, actor=actor)
-    _sync_stage(state, stage_name, "completed")
 
 
 def mark_stage_failed(
@@ -287,7 +258,6 @@ def mark_stage_failed(
     stage["verification"] = verification
     stage["error_detail"] = error_detail
     append_audit(state, "stage_failed", stage=stage_name, actor=actor, detail=error_detail)
-    _sync_stage(state, stage_name, "failed", error_detail=error_detail)
 
 
 def mark_stage_stalled(
@@ -302,8 +272,6 @@ def mark_stage_stalled(
     if state.get("status") == "in_progress":
         state["status"] = "stalled"
     append_audit(state, "stage_stalled", stage=stage_name, actor=actor)
-    _sync_stage(state, stage_name, "stalled")
-    _sync_pipeline(state, state.get("status", "stalled"))
 
 
 def update_stage_verdict(
@@ -441,21 +409,7 @@ def initialize_state(
         "stall_threshold_minutes": stall_threshold_minutes,
         "max_attempts_per_stage": max_attempts_per_stage,
         "audit": [],
-        "paperclip_parent_issue_id": None,
     }
-
-    # Attempt Paperclip sync (non-fatal)
-    sync = _get_sync()
-    team_id = os.environ.get("PAPERCLIP_TEAM_ID", "")
-    if sync and team_id:
-        try:
-            issue_ids = sync.create_pipeline_issues(state, team_id=team_id)
-            if issue_ids:
-                state["paperclip_parent_issue_id"] = issue_ids.get("_parent")
-                for stage in state["stages"]:
-                    stage["paperclip_issue_id"] = issue_ids.get(stage["name"])
-        except Exception:
-            pass  # Non-fatal
 
     return state
 
@@ -487,7 +441,6 @@ def _normalize_stage(stage: dict[str, Any]) -> dict[str, Any]:
         "verification": stage.get("verification"),
         "error_detail": stage.get("error_detail"),
         "attempt": stage.get("attempt", 0),
-        "paperclip_issue_id": stage.get("paperclip_issue_id"),
     }
 
 
@@ -535,58 +488,6 @@ def _update_stage_verdict_locked(
             event = "pipeline_completed" if term == "completed" else "pipeline_failed"
             append_audit(state, event, actor=actor)
             state["status"] = term
-            _sync_pipeline(
-                state,
-                term,
-                error_detail=error_detail if term == "failed" else None,
-            )
 
         write_state(state_path, state)
         return True
-
-
-def _sync_stage(
-    state: dict[str, Any],
-    stage_name: str,
-    status: str,
-    error_detail: str | None = None,
-) -> None:
-    """Non-fatal Paperclip status sync for a stage.
-
-    Resolves the Paperclip issue ID from the stage dict and updates the
-    corresponding workflow state. All failures are silently swallowed so
-    that Paperclip unavailability never blocks pipeline execution.
-    """
-    sync = _get_sync()
-    team_id = os.environ.get("PAPERCLIP_TEAM_ID", "")
-    if not sync or not team_id:
-        return
-    stage = next((s for s in state.get("stages", []) if s["name"] == stage_name), None)
-    if not stage:
-        return
-    issue_id = stage.get("paperclip_issue_id")
-    if not issue_id:
-        return  # No Paperclip issue — skip
-    try:
-        sync.sync_stage_status(issue_id, status, team_id=team_id, error_detail=error_detail)
-    except Exception:
-        pass  # Non-fatal
-
-
-def _sync_pipeline(
-    state: dict[str, Any],
-    status: str,
-    error_detail: str | None = None,
-) -> None:
-    """Non-fatal Paperclip status sync for the parent pipeline issue."""
-    sync = _get_sync()
-    team_id = os.environ.get("PAPERCLIP_TEAM_ID", "")
-    if not sync or not team_id:
-        return
-    issue_id = state.get("paperclip_parent_issue_id")
-    if not issue_id:
-        return
-    try:
-        sync.sync_pipeline_status(issue_id, status, team_id=team_id, error_detail=error_detail)
-    except Exception:
-        pass  # Non-fatal

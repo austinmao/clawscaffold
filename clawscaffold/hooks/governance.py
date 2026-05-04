@@ -1,4 +1,4 @@
-"""Abstract governance hook — Paperclip/issue-tracker integration."""
+"""Abstract governance hook — issue-tracker integration."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class GovernanceHook:
-    """No-op governance hook. Override for Paperclip/issue-tracker integration."""
+    """No-op governance hook. Override for issue-tracker integration."""
 
     def sync_target(self, target_id: str, **kwargs: Any) -> dict[str, Any]:
         logger.debug("GovernanceHook.sync_target called (no-op): %s", target_id)

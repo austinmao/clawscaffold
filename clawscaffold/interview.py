@@ -260,7 +260,6 @@ def governance_defaults_for_spec(kind: str, target_id: str) -> dict[str, Any]:
             "approval_tier": "medium",
             "risk_tier": "medium",
             "budget_tier": "standard",
-            "paperclip": {"export": True},
         }
     return {
         "classification": "entrypoint",
@@ -269,7 +268,6 @@ def governance_defaults_for_spec(kind: str, target_id: str) -> dict[str, Any]:
         "approval_tier": "low",
         "risk_tier": "low",
         "budget_tier": "economy",
-        "paperclip": {"export": False},
     }
 
 

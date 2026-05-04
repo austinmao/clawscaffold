@@ -1396,8 +1396,8 @@ def handle_upgrade(args: Namespace) -> int:
         spec["operation"].setdefault("resilience", {"fallback_agent": None, "degraded_mode": None, "circuit_breaker_threshold": 3})
         spec.setdefault("policy", {}).setdefault("resource_limits", {"max_tokens_per_session": 50000, "max_sessions_per_day": 100, "max_outbound_per_day": 50, "rate_limits": {}})
         spec["policy"].setdefault("compliance", {"data_classification": "internal", "handles_pii": False, "handles_phi": False, "retention_days": 90})
-        spec["policy"].setdefault("observability", {"log_level": "standard", "cost_tracking": True, "alert_on_failure": False, "paperclip_sync": True})
-        spec.setdefault("governance", {"visibility": "internal", "approval_tier": "medium", "risk_tier": "low", "budget_tier": "standard", "monthly_usd_cap": 50, "paperclip": {"export": kind == "agent"}})
+        spec["policy"].setdefault("observability", {"log_level": "standard", "cost_tracking": True, "alert_on_failure": False})
+        spec.setdefault("governance", {"visibility": "internal", "approval_tier": "medium", "risk_tier": "low", "budget_tier": "standard", "monthly_usd_cap": 50})
         if kind == "skill":
             spec.setdefault("skill", {}).setdefault("owned_by_agents", [])
             spec["skill"].setdefault("scope", "workspace")
@@ -1431,18 +1431,6 @@ def handle_governance_audit(args: Namespace) -> int:
         return 0
     print(f"governance-audit: FAILED ({len(result['errors'])} errors)")
     return 1
-
-
-def handle_export_paperclip(args: Namespace) -> int:
-    from clawscaffold.paperclip_export import export_all
-
-    try:
-        result = export_all(_repo())
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-    print(f"export-paperclip: wrote {result['agents_exported']} agents, {result['teams']} teams to {result['export_dir']}")
-    return 0
 
 
 def handle_skill(args: Namespace) -> int:
@@ -1690,9 +1678,6 @@ def build_parser() -> ArgumentParser:
     gov_audit_parser = subparsers.add_parser("governance-audit")
     gov_audit_parser.set_defaults(func=handle_governance_audit)
 
-    export_parser = subparsers.add_parser("export-paperclip")
-    export_parser.set_defaults(func=handle_export_paperclip)
-
     # --- Skill discovery subparser ---
     skill_parser = subparsers.add_parser(
         "skill",
@@ -1721,19 +1706,6 @@ def build_parser() -> ArgumentParser:
     skill_add_parser.add_argument("source_name", help="Source and skill name in <source>:<skill-name> format")
     skill_add_parser.set_defaults(func=handle_skill)
 
-    # --- sync-paperclip: optional Paperclip adapter ---
-    sync_pclip_parser = subparsers.add_parser(
-        "sync-paperclip",
-        help="Sync agents from catalog to Paperclip via CLI (optional adapter)",
-    )
-    sync_pclip_parser.add_argument("--dry-run", action="store_true", help="Generate .paperclip.yaml and print without importing")
-    sync_pclip_parser.add_argument("--filter", help="Glob pattern to filter agents (e.g. 'executive/*')")
-    sync_pclip_parser.add_argument("--generate-keys", action="store_true", help="Generate API keys after import")
-    sync_pclip_parser.add_argument("--force-keys", action="store_true", help="Regenerate keys even if key files exist")
-    sync_pclip_parser.add_argument("--api-base", help="Paperclip API URL (default: PAPERCLIP_API_URL env)")
-    sync_pclip_parser.add_argument("--company-id", help="Paperclip company ID (default: PAPERCLIP_COMPANY_ID env)")
-    sync_pclip_parser.set_defaults(func=handle_sync_paperclip)
-
     # --- sync-skills: populate agent workspace skill directories ---
     sync_skills_parser = subparsers.add_parser(
         "sync-skills",
@@ -1753,14 +1725,13 @@ def build_parser() -> ArgumentParser:
     sync_agents_parser.add_argument("--filter", help="Glob pattern to filter agents (e.g. 'executive/*')")
     sync_agents_parser.set_defaults(func=handle_sync_agents)
 
-    # --- sync: unified sync (agents + skills + paperclip) ---
+    # --- sync: unified sync (agents + skills) ---
     sync_parser = subparsers.add_parser(
         "sync",
-        help="Sync all: register agents with gateway, populate workspace skills, and optionally sync to Paperclip",
+        help="Sync all: register agents with gateway and populate workspace skills",
     )
     sync_parser.add_argument("--dry-run", action="store_true", help="Preview without applying")
     sync_parser.add_argument("--clean", action="store_true", help="Remove undeclared skills from workspaces")
-    sync_parser.add_argument("--skip-paperclip", action="store_true", help="Skip Paperclip sync")
     sync_parser.add_argument("--skip-agents", action="store_true", help="Skip gateway agent registration")
     sync_parser.add_argument("--skip-skills", action="store_true", help="Skip workspace skill sync")
     sync_parser.set_defaults(func=handle_sync)
@@ -1875,36 +1846,7 @@ def handle_sync(args: Namespace) -> int:
         if rc != 0:
             exit_code = rc
 
-    if not getattr(args, "skip_paperclip", False):
-        print("\n=== Syncing agents to Paperclip ===")
-        try:
-            pclip_args = Namespace(dry_run=dry_run, filter=None, generate_keys=False, force_keys=False, api_base=None, company_id=None)
-            rc = handle_sync_paperclip(pclip_args)
-            if rc != 0:
-                exit_code = rc
-        except Exception as exc:
-            print(f"[sync] Paperclip sync skipped: {exc}")
-
     return exit_code
-
-
-def handle_sync_paperclip(args: Namespace) -> int:
-    """Handle sync-paperclip subcommand."""
-    from clawscaffold.adapters.paperclip_adapter import PaperclipAdapter
-
-    adapter = PaperclipAdapter(repo_root=_repo())
-    result = adapter.sync(
-        dry_run=getattr(args, "dry_run", False),
-        filter_pattern=getattr(args, "filter", None),
-        generate_keys_flag=getattr(args, "generate_keys", False),
-        force_keys=getattr(args, "force_keys", False),
-        api_base=getattr(args, "api_base", None),
-        company_id=getattr(args, "company_id", None),
-    )
-
-    if result.import_result and result.import_result.errors:
-        return 1
-    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
